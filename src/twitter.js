@@ -9,7 +9,9 @@ const AUTH_URL = 'https://twitter.com/i/oauth2/authorize';
 const TOKEN_URL = 'https://api.twitter.com/2/oauth2/token';
 const USER_INFO_URL = 'https://api.twitter.com/2/users/me';
 
-const TWITTER_CLIENT_ID = process.env.TWITTER_ID || process.env.TWITTER_CLIENT_ID;
+// 使用 Waline 的环境变量命名
+const TWITTER_CLIENT_ID = process.env.TWITTER_ID;        // OAuth2 Client ID
+const TWITTER_CLIENT_SECRET = process.env.TWITTER_SECRET; // 不用于 PKCE，但 Waline 需要它存在
 
 // PKCE helpers
 function base64url(buf) {
@@ -28,8 +30,9 @@ function generatePKCE() {
 }
 
 module.exports = class extends Base {
+  // Waline 必须看到 TWITTER_ID + TWITTER_SECRET 才会初始化 provider
   static check() {
-    return process.env.TWITTER_ID && process.env.TWITTER_SECRET;
+    return TWITTER_CLIENT_ID && TWITTER_CLIENT_SECRET;
   }
 
   static info() {
@@ -50,6 +53,7 @@ module.exports = class extends Base {
     const { verifier, challenge } = generatePKCE();
     const oauthState = uuid.v4().replace(/-/g, '');
 
+    // 保存 PKCE verifier
     await this._session.set(
       `pkce:${oauthState}`,
       JSON.stringify({ verifier, redirect, state, callbackUrl })
@@ -97,7 +101,8 @@ module.exports = class extends Base {
   }
 
   async getUserInfoByToken(access_token) {
-    const url = USER_INFO_URL + '?user.fields=name,username,profile_image_url,url,profile_image_url,verified,created_at,protected,location,description,entities,public_metrics,withheld,profile_image_url,verified_type,possibly_sensitive,profile_banner_url,url,email';
+    const url = USER_INFO_URL +
+      '?user.fields=name,username,profile_image_url,url,email';
 
     const resp = await request({
       url,
@@ -119,7 +124,7 @@ module.exports = class extends Base {
       return this.redirect();
     }
 
-    // 和原逻辑保持一致：浏览器端先跳回 redirect，再由 Waline 服务端来拿用户信息
+    // 浏览器端先跳回 redirect，再由 Waline 服务端来拿用户信息
     if (redirect && this.ctx.headers['user-agent'] !== '@waline') {
       return this.ctx.redirect(
         redirect +
