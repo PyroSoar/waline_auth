@@ -9,7 +9,7 @@ const AUTH_URL = 'https://twitter.com/i/oauth2/authorize';
 const TOKEN_URL = 'https://api.twitter.com/2/oauth2/token';
 const USER_INFO_URL = 'https://api.twitter.com/2/users/me';
 
-const { TWITTER_CLIENT_ID } = process.env;
+const TWITTER_CLIENT_ID = process.env.TWITTER_ID || process.env.TWITTER_CLIENT_ID;
 
 // PKCE helpers
 function base64url(buf) {
@@ -29,7 +29,7 @@ function generatePKCE() {
 
 module.exports = class extends Base {
   static check() {
-    return !!TWITTER_CLIENT_ID;
+    return TWITTER_CLIENT_ID;
   }
 
   static info() {
