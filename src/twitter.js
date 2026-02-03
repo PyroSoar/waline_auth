@@ -9,9 +9,10 @@ const AUTH_URL = 'https://twitter.com/i/oauth2/authorize';
 const TOKEN_URL = 'https://api.twitter.com/2/oauth2/token';
 const USER_INFO_URL = 'https://api.twitter.com/2/users/me';
 
-// 使用 Waline 的环境变量命名
-const TWITTER_CLIENT_ID = process.env.TWITTER_ID;        // OAuth2 Client ID
-const TWITTER_CLIENT_SECRET = process.env.TWITTER_SECRET; // 不用于 PKCE，但 Waline 需要它存在
+// Waline 环境变量：TWITTER_ID = OAuth2 Client ID
+const TWITTER_CLIENT_ID = process.env.TWITTER_ID;
+// Waline 需要 TWITTER_SECRET 才会启用 provider（PKCE 不使用）
+const TWITTER_CLIENT_SECRET = process.env.TWITTER_SECRET;
 
 // PKCE helpers
 function base64url(buf) {
@@ -48,12 +49,14 @@ module.exports = class extends Base {
 
   async redirect() {
     const { redirect, state } = this.ctx.params;
-    const callbackUrl = this.getCompleteUrl('/twitter') + '?' + qs.stringify({ redirect, state });
+
+    // redirect_uri 必须固定，不能带 query
+    const callbackUrl = this.getCompleteUrl('/twitter');
 
     const { verifier, challenge } = generatePKCE();
     const oauthState = uuid.v4().replace(/-/g, '');
 
-    // 保存 PKCE verifier
+    // 保存 PKCE verifier + redirect + 原始 state
     await this._session.set(
       `pkce:${oauthState}`,
       JSON.stringify({ verifier, redirect, state, callbackUrl })
@@ -74,8 +77,7 @@ module.exports = class extends Base {
       code_challenge_method: 'S256'
     };
 
-    const url = AUTH_URL + '?' + qs.stringify(params);
-    return this.ctx.redirect(url);
+    return this.ctx.redirect(AUTH_URL + '?' + qs.stringify(params));
   }
 
   async getAccessToken({ code, oauthState }) {
@@ -84,7 +86,7 @@ module.exports = class extends Base {
 
     const { verifier, callbackUrl } = JSON.parse(sessionRaw);
 
-    const resp = await request({
+    return await request({
       url: TOKEN_URL,
       method: 'POST',
       form: {
@@ -96,15 +98,13 @@ module.exports = class extends Base {
       },
       json: true
     });
-
-    return resp;
   }
 
   async getUserInfoByToken(access_token) {
     const url = USER_INFO_URL +
       '?user.fields=name,username,profile_image_url,url,email';
 
-    const resp = await request({
+    return await request({
       url,
       method: 'GET',
       headers: {
@@ -112,17 +112,25 @@ module.exports = class extends Base {
       },
       json: true
     });
-
-    return resp;
   }
 
   async getUserInfo() {
-    const { code, state: oauthState, redirect, state } = this.ctx.params;
+    const { code, state: oauthState } = this.ctx.params;
 
     // 初次进入，没有 code/state，则发起 OAuth 2.0 授权
     if (!code || !oauthState) {
       return this.redirect();
     }
+
+    this.ctx.type = 'json';
+
+    const sessionRaw = await this._session.get(`pkce:${oauthState}`);
+    if (!sessionRaw) {
+      this.ctx.status = 400;
+      return this.ctx.body = { error: 'Invalid OAuth state' };
+    }
+
+    const { redirect, state } = JSON.parse(sessionRaw);
 
     // 浏览器端先跳回 redirect，再由 Waline 服务端来拿用户信息
     if (redirect && this.ctx.headers['user-agent'] !== '@waline') {
@@ -132,8 +140,6 @@ module.exports = class extends Base {
         qs.stringify({ code, state: oauthState })
       );
     }
-
-    this.ctx.type = 'json';
 
     const tokenInfo = await this.getAccessToken({ code, oauthState });
     if (!tokenInfo || !tokenInfo.access_token) {
