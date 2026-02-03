@@ -29,7 +29,7 @@ function generatePKCE() {
 
 module.exports = class extends Base {
   static check() {
-    return TWITTER_CLIENT_ID;
+    return process.env.TWITTER_ID && process.env.TWITTER_SECRET;
   }
 
   static info() {
