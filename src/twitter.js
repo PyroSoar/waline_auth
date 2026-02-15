@@ -153,7 +153,7 @@ module.exports = class extends Base {
     }
 
     // Exchange the code for an access token using the verifier from stateData
-    const tokenInfo = await this.getAccessToken({ code, encodedState });
+    const tokenInfo = await this.getAccessToken({ code, stateData });
     if (!tokenInfo || !tokenInfo.access_token) {
       this.ctx.status = 401;
       return this.ctx.body = { error: 'Failed to obtain access token from Twitter OAuth 2.0' };
