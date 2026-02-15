@@ -92,10 +92,7 @@ module.exports = class extends Base {
     return this.ctx.redirect(AUTH_URL + '?' + qs.stringify(params));
   }
 
-  async getAccessToken({ code, encodedState }) {
-    const stateData = decodeStateData(encodedState);
-    if (!stateData) return null;
-
+  async getAccessToken({ code, stateData }) {
     const { verifier, callbackUrl } = stateData;
 
     return await request({
@@ -111,6 +108,7 @@ module.exports = class extends Base {
       json: true
     });
   }
+
 
   async getUserInfoByToken(access_token) {
     const url = USER_INFO_URL +
