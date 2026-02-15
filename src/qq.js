@@ -72,8 +72,8 @@ module.exports = class extends Base {
       throw err;
     }
 
-    if (!tokenInfo.unionid || !tokenInfo.openid) {
-      const err = new Error('[QQ Token Error] Missing unionid or openid in response');
+    if (!tokenInfo.openid) {
+      const err = new Error('[QQ Token Error] Missing openid in response');
       err.statusCode = 400;
       throw err;
     }
@@ -92,9 +92,9 @@ module.exports = class extends Base {
       throw err;
     }
 
-    // 返回统一格式的用户信息
+    // 保证返回的用户信息一定有 id
     return this.formatUserResponse({
-      id: tokenInfo.unionid,
+      id: tokenInfo.unionid || tokenInfo.openid, // 优先 unionid，没有就用 openid
       name: userInfo.nickname || 'QQ User',
       email: userInfo.email || undefined,
       url: undefined,
@@ -111,7 +111,6 @@ module.exports = class extends Base {
     const accessTokenInfo = await this.getAccessToken(code);
     const userInfo = await this.getUserInfoByToken(accessTokenInfo);
 
-    // 和 Google 一样，只返回用户信息给 oauth.js
     this.ctx.type = 'json';
     this.ctx.body = userInfo;
   }
