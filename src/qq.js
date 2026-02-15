@@ -44,11 +44,20 @@ module.exports = class extends Base {
       fmt: 'json'
     };
 
-    return request.post({
+    const response = await request.post({
       url: ACCESS_TOKEN_URL,
       form: params,
       json: true
     });
+
+    // Check for QQ API error
+    if (response.error) {
+      const err = new Error(`[QQ API Error] ${response.error_description || response.error}`);
+      err.code = response.error;
+      throw err;
+    }
+
+    return response;
   }
 
   async getUserInfoByToken({access_token}) {
@@ -58,6 +67,17 @@ module.exports = class extends Base {
       fmt: 'json'
     }), {json: true});
 
+    // Check for QQ API error response (QQ returns errcode on error)
+    if (tokenInfo.errcode) {
+      const err = new Error(`[QQ Token Error] ${tokenInfo.errmsg || `errcode: ${tokenInfo.errcode}`}`);
+      err.code = tokenInfo.errcode;
+      throw err;
+    }
+
+    if (!tokenInfo.unionid || !tokenInfo.openid) {
+      throw new Error('[QQ Token Error] Missing unionid or openid in response');
+    }
+
     const userInfo = await request.get(USER_INFO_URL + '?' + qs.stringify({
       access_token, 
       openid: tokenInfo.openid,
@@ -65,12 +85,19 @@ module.exports = class extends Base {
       format: 'json',
     }), {json: true});
 
+    // Check for QQ user info API error (QQ returns ret != 0 on error)
+    if (userInfo.ret !== 0) {
+      const err = new Error(`[QQ UserInfo Error] ${userInfo.msg || `ret: ${userInfo.ret}`}`);
+      err.code = userInfo.ret;
+      throw err;
+    }
+
     return {
       id: tokenInfo.unionid,
-      name: userInfo.nickname,
-      email: undefined,
+      name: userInfo.nickname || 'QQ User',
+      email: userInfo.email || `qq_${tokenInfo.openid}@qq.local`,
       url: undefined,
-      avatar: userInfo.figureurl_qq_2 || userInfo.figureurl_qq_1 || userInfo.figureurl_qq || userInfo.figureurl_2 || userInfo.figureurl_1 || userInfo.figureurl,
+      avatar: userInfo.figureurl_qq_2 || userInfo.figureurl_qq_1 || userInfo.figureurl_qq || userInfo.figureurl_2 || userInfo.figureurl_1 || userInfo.figureurl || '',
     };
   }
 }
