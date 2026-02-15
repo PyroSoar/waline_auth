@@ -1,7 +1,6 @@
 const Base = require('./base');
 const qs = require('querystring');
 const request = require('request-promise-native');
-const jwt = require('jsonwebtoken');
 
 const OAUTH_URL = 'https://graph.qq.com/oauth2.0/authorize';
 const ACCESS_TOKEN_URL = 'https://graph.qq.com/oauth2.0/token';
@@ -29,50 +28,6 @@ module.exports = class extends Base {
       response_type: 'code'
     });
     return this.ctx.redirect(url);
-  }
-
-  async indexAction() {
-    const { code, redirect, state } = this.ctx.params;
-    if (!code) {
-      return this.redirect();
-    }
-
-    // Step 1: Exchange code for access token
-    const tokenResponse = await this.getAccessToken(code);
-
-    // Step 2: Fetch QQ user info
-    const user = await this.getUserInfoByToken(tokenResponse);
-
-    // Step 3: Check or create DB record
-    const userByQQ = await this.modelInstance.select({ qq: user.id });
-    let objectId;
-    if (!think.isEmpty(userByQQ)) {
-      objectId = userByQQ[0].objectId;
-    } else {
-      const created = await this.modelInstance.add({
-        display_name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        qq: user.id,
-        password: this.hashPassword(Math.random()),
-        type: 'guest',
-      });
-      objectId = created.objectId;
-    }
-
-    // Step 4: Issue JWT
-    const token = jwt.sign(
-      { objectId },
-      this.config('jwtKey'),
-      { expiresIn: '7d' }
-    );
-
-    // Step 5: Redirect with token
-    if (redirect) {
-      this.redirect(redirect + (redirect.includes('?') ? '&' : '?') + 'token=' + token);
-    } else {
-      this.success({ token });
-    }
   }
 
   async getAccessToken(code) {
@@ -137,12 +92,27 @@ module.exports = class extends Base {
       throw err;
     }
 
-    return {
+    // 返回统一格式的用户信息
+    return this.formatUserResponse({
       id: tokenInfo.unionid,
       name: userInfo.nickname || 'QQ User',
       email: userInfo.email || undefined,
       url: undefined,
       avatar: userInfo.figureurl_qq_2 || userInfo.figureurl_qq_1 || userInfo.figureurl_qq || userInfo.figureurl_2 || userInfo.figureurl_1 || userInfo.figureurl || '',
-    };
+    }, 'qq');
+  }
+
+  async indexAction() {
+    const { code } = this.ctx.params;
+    if (!code) {
+      return this.redirect();
+    }
+
+    const accessTokenInfo = await this.getAccessToken(code);
+    const userInfo = await this.getUserInfoByToken(accessTokenInfo);
+
+    // 和 Google 一样，只返回用户信息给 oauth.js
+    this.ctx.type = 'json';
+    this.ctx.body = userInfo;
   }
 };
