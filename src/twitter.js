@@ -150,12 +150,12 @@ module.exports = class extends Base {
     const userInfo = await this.getUserInfoByToken(tokenInfo.access_token);
     const u = userInfo && userInfo.data ? userInfo.data : {};
 
-    return this.ctx.body = {
+    return this.ctx.body = this.formatUserResponse({
       id: u.id,
       name: u.name || u.username,
-      email: u.email || null,
-      url: u.url || (u.username ? `https://twitter.com/${u.username}` : null),
-      avatar: u.profile_image_url
-    };
+      email: u.email || undefined,
+      url: u.url || (u.username ? `https://twitter.com/${u.username}` : undefined),
+      avatar: u.profile_image_url || undefined
+    }, 'twitter');
   }
 };

@@ -71,11 +71,14 @@ module.exports = class extends Base {
     if (tokenInfo.errcode) {
       const err = new Error(`[QQ Token Error] ${tokenInfo.errmsg || `errcode: ${tokenInfo.errcode}`}`);
       err.code = tokenInfo.errcode;
+      err.statusCode = 401;
       throw err;
     }
 
     if (!tokenInfo.unionid || !tokenInfo.openid) {
-      throw new Error('[QQ Token Error] Missing unionid or openid in response');
+      const err = new Error('[QQ Token Error] Missing unionid or openid in response');
+      err.statusCode = 400;
+      throw err;
     }
 
     const userInfo = await request.get(USER_INFO_URL + '?' + qs.stringify({
@@ -89,15 +92,16 @@ module.exports = class extends Base {
     if (userInfo.ret !== 0) {
       const err = new Error(`[QQ UserInfo Error] ${userInfo.msg || `ret: ${userInfo.ret}`}`);
       err.code = userInfo.ret;
+      err.statusCode = 401;
       throw err;
     }
 
-    return {
+    return this.formatUserResponse({
       id: tokenInfo.unionid,
       name: userInfo.nickname || 'QQ User',
-      email: userInfo.email || `qq_${tokenInfo.openid}@qq.local`,
+      email: userInfo.email || undefined,
       url: undefined,
       avatar: userInfo.figureurl_qq_2 || userInfo.figureurl_qq_1 || userInfo.figureurl_qq || userInfo.figureurl_2 || userInfo.figureurl_1 || userInfo.figureurl || '',
-    };
+    }, 'qq');
   }
 }

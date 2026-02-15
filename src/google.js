@@ -49,13 +49,13 @@ module.exports = class extends Base {
       json: true
     });
     
-    return {
+    return this.formatUserResponse({
       id: user.id,
       name: user.name,
-      email: user.email,
-      url: '',
+      email: user.email || undefined,
+      url: undefined,
       avatar: user.picture,
-    }
+    }, 'google');
   }
 
   async redirect() {
