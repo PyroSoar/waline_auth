@@ -96,7 +96,7 @@ module.exports = class extends Base {
     return this.formatUserResponse({
       id: tokenInfo.unionid || tokenInfo.openid, // 优先 unionid，没有就用 openid
       name: userInfo.nickname || 'QQ User',
-      email: userInfo.email || `${tokenInfo.openid}@qq.com`,
+      email: userInfo.email || `${tokenInfo.openid}@qq-uuid.com`,
       url: undefined,
       avatar: userInfo.figureurl_qq_2 || userInfo.figureurl_qq_1 || userInfo.figureurl_qq || userInfo.figureurl_2 || userInfo.figureurl_1 || userInfo.figureurl || '',
     }, 'qq');
