@@ -61,7 +61,11 @@ module.exports = class extends Base {
     }
 
     // Step 4: Issue JWT
-    const token = jwt.sign(objectId, this.config('jwtKey'));
+    const token = jwt.sign(
+      { objectId },
+      this.config('jwtKey'),
+      { expiresIn: '7d' }
+    );
 
     // Step 5: Redirect with token
     if (redirect) {
