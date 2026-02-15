@@ -136,15 +136,16 @@ module.exports = class extends Base {
 
     this.ctx.type = 'json';
 
+    // Decode the state to recover verifier and redirect info
     const stateData = decodeStateData(encodedState);
     if (!stateData) {
       this.ctx.status = 400;
       return this.ctx.body = { error: 'Invalid OAuth state' };
     }
 
-    const { redirect, state } = stateData;
+    const { redirect } = stateData;
 
-    // Browser redirects back to your app first, then your backend calls this service
+    // If a redirect URL was provided, forward the code/state back to that client
     if (redirect && this.ctx.headers['user-agent'] !== '@waline') {
       return this.ctx.redirect(
         redirect +
@@ -153,12 +154,14 @@ module.exports = class extends Base {
       );
     }
 
+    // Exchange the code for an access token using the verifier from stateData
     const tokenInfo = await this.getAccessToken({ code, encodedState });
     if (!tokenInfo || !tokenInfo.access_token) {
       this.ctx.status = 401;
       return this.ctx.body = { error: 'Failed to obtain access token from Twitter OAuth 2.0' };
     }
 
+    // Fetch user info with the access token
     const userInfo = await this.getUserInfoByToken(tokenInfo.access_token);
     const u = userInfo && userInfo.data ? userInfo.data : {};
 
@@ -170,4 +173,5 @@ module.exports = class extends Base {
       avatar: u.profile_image_url || undefined
     }, 'twitter');
   }
+
 };
