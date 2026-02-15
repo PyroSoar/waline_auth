@@ -1,4 +1,4 @@
-# Waline Auth - Multi-Platform OAuth Authentication Service
+# Unified OAuth Authentication Service
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
@@ -16,7 +16,7 @@
 
 ## Project Overview
 
-**Waline Auth** is a unified OAuth authentication service provider that supports multiple third-party platforms:
+This is a unified OAuth authentication service that supports multiple third-party platforms. It can be used with [Waline](https://waline.js.org) comment systems or integrated into any web application:
 - GitHub
 - Google
 - Facebook
@@ -31,20 +31,20 @@
 ✅ **Data Validation & Sanitization** - User data is validated and normalized automatically
 ✅ **Error Handling** - Comprehensive error responses with standardized error codes
 ✅ **Vercel Deployment Ready** - Built for serverless deployment on Vercel
-✅ **Flexible Integration** - Use with Waline commenting system or standalone
+✅ **Flexible Integration** - Works with Waline, static sites, SPAs, backend services, and more
 
 ### Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
 │        Client Application/Browser              │
-│        (e.g., Waline Frontend)                  │
+│        (e.g., Waline, Static Site, SPA)        │
 └────────────────┬────────────────────────────────┘
                  │
                  │ OAuth Flow
                  │
 ┌────────────────▼────────────────────────────────┐
-│       Waline Auth Service (This Project)        │
+│       OAuth Authentication Service (This Project)        │
 │  ┌──────────────────────────────────────────┐  │
 │  │  Unified Response Formatter              │  │
 │  │  - Normalize user data                   │  │
@@ -568,11 +568,11 @@ console.log(userData);
 app.post('/auth/callback', async (req, res) => {
   const { code, state } = req.body;
   
-  // Fetch user info from Waline Auth
+  Fetch user info from OAuth service
   const response = await fetch(
     `https://auth.example.com/github?code=${code}&state=${state}`,
     {
-      headers: { 'User-Agent': '@waline' }
+      headers: { 'User-Agent': 'MyApp/1.0' } // Identify backend service
     }
   );
   
@@ -598,7 +598,7 @@ loginButton.addEventListener('click', async () => {
   const baseUrl = 'https://auth.example.com/github';
   const redirectUrl = `${window.location.origin}/auth/callback`;
   
-  // Redirect to Waline Auth
+  // Redirect to OAuth service
   window.location.href = 
     `${baseUrl}?redirect=${encodeURIComponent(redirectUrl)}&state=${generateState()}`;
 });
@@ -1048,13 +1048,14 @@ vercel env add GITHUB_SECRET your_secret
 
 ### PKCE verification failed (Twitter)
 
-**Cause:** Session storage for PKCE challenge is unavailable
+**Cause:** State parameter was corrupted or invalid
 
 **Solution:**
 ```
-1. Ensure LeanCloud credentials are set for Twitter
-2. Test with: LEAN_ID and LEAN_KEY environment variables
-3. Or configure another storage backend
+1. Verify that the complete state parameter is being passed between callback steps
+2. Check URL encoding - ensure state parameter is properly encoded/decoded
+3. Verify TWITTER_ID and TWITTER_SECRET are set correctly
+4. Try the authentication flow again
 ```
 
 ### Missing required user data
@@ -1097,14 +1098,15 @@ const walineConfig = {
 };
 ```
 
-### Custom Authentication System
+### Node.js/Express Backend Integration
 
 ```javascript
-// Backend route
-app.get('/api/auth/callback', async (req, res) => {
-  const { provider, code, state } = req.query;
+// Backend route for universal OAuth handling
+app.get('/api/auth/callback/:provider', async (req, res) => {
+  const { provider } = req.params;
+  const { code, state } = req.query;
   
-  // Get user from Waline Auth
+  // Get user from OAuth service
   const userData = await fetch(
     `https://auth.example.com/${provider}?code=${code}&state=${state}`
   ).then(r => r.json());
@@ -1121,7 +1123,7 @@ app.get('/api/auth/callback', async (req, res) => {
     avatar: userData.avatar
   });
   
-  // Create session
+  // Create session/JWT
   req.session.userId = user.id;
   res.redirect('/dashboard');
 });

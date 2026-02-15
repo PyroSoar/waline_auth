@@ -1,8 +1,8 @@
 /**
- * Waline Auth - Integration Examples
+ * Unified OAuth Authentication Service - Integration Examples
  * 
  * This file contains practical examples for integrating
- * Waline Auth with various backend frameworks
+ * the OAuth authentication service with various backend frameworks
  */
 
 // ==============================================================================
@@ -46,7 +46,7 @@ app.get('/auth/login/:provider', (req, res) => {
     req.session.oauth_redirect = redirect;
   }
   
-  // Redirect to Waline Auth service
+  // Redirect to OAuth authentication service
   const authUrl = new URL(`https://auth.example.com/${provider}`);
   authUrl.searchParams.set('redirect', `${process.env.SERVER_URL}/auth/callback/${provider}`);
   authUrl.searchParams.set('state', state);
@@ -68,7 +68,7 @@ app.get('/auth/callback/:provider', async (req, res) => {
   }
   
   try {
-    // Get user info from Waline Auth
+    // Get user info from OAuth authentication service
     const authUrl = new URL(`https://auth.example.com/${provider}`);
     authUrl.searchParams.set('code', code);
     authUrl.searchParams.set('state', state);
@@ -340,7 +340,11 @@ module.exports = (sequelize) => {
 // Example 4: API Client Utility
 // ==============================================================================
 
-class WalineAuthClient {
+/**
+ * OAuth Authentication Service Client
+ * Universal client for OAuth service integration
+ */
+class OAuthServiceClient {
   constructor(baseUrl = 'https://auth.example.com') {
     this.baseUrl = baseUrl;
   }
@@ -395,7 +399,7 @@ class WalineAuthClient {
 }
 
 // Usage:
-// const client = new WalineAuthClient('https://auth.example.com');
+// const client = new OAuthServiceClient('https://auth.example.com');
 // const authUrl = client.getAuthorizationUrl('github', 'https://myapp.com/callback');
 // const userInfo = await client.getUserInfo('github', code, state);
 
@@ -546,7 +550,7 @@ describe('OAuth Integration', () => {
 */
 
 module.exports = {
-  WalineAuthClient,
+  OAuthServiceClient,
   generateState,
   validateUserData,
   hashForLogging,

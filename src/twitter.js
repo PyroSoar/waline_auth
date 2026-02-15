@@ -1,17 +1,13 @@
 const Base = require('./base');
 const crypto = require('crypto');
 const qs = require('querystring');
-const uuid = require('uuid');
-const Storage = require('./utils/storage/leancloud');
 const request = require('request-promise-native');
 
 const AUTH_URL = 'https://twitter.com/i/oauth2/authorize';
 const TOKEN_URL = 'https://api.twitter.com/2/oauth2/token';
 const USER_INFO_URL = 'https://api.twitter.com/2/users/me';
 
-// Waline 环境变量：TWITTER_ID = OAuth2 Client ID
 const TWITTER_CLIENT_ID = process.env.TWITTER_ID;
-// Waline 需要 TWITTER_SECRET 才会启用 provider（PKCE 不使用）
 const TWITTER_CLIENT_SECRET = process.env.TWITTER_SECRET;
 
 // PKCE helpers
@@ -30,8 +26,30 @@ function generatePKCE() {
   return { verifier, challenge };
 }
 
+/**
+ * Encode state data to base64 for stateless operation
+ */
+function encodeStateData(data) {
+  return Buffer.from(JSON.stringify(data)).toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+/**
+ * Decode state data from base64
+ */
+function decodeStateData(encoded) {
+  try {
+    const padded = encoded + '='.repeat((4 - encoded.length % 4) % 4);
+    const decoded = Buffer.from(padded.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString();
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
 module.exports = class extends Base {
-  // Waline 必须看到 TWITTER_ID + TWITTER_SECRET 才会初始化 provider
   static check() {
     return TWITTER_CLIENT_ID && TWITTER_CLIENT_SECRET;
   }
@@ -42,25 +60,19 @@ module.exports = class extends Base {
     };
   }
 
-  constructor(ctx) {
-    super(ctx);
-    this._session = new Storage('twitter');
-  }
-
   async redirect() {
     const { redirect, state } = this.ctx.params;
-
-    // redirect_uri 必须固定，不能带 query
     const callbackUrl = this.getCompleteUrl('/twitter');
 
     const { verifier, challenge } = generatePKCE();
-    const oauthState = uuid.v4().replace(/-/g, '');
 
-    // 保存 PKCE verifier + redirect + 原始 state
-    await this._session.set(
-      `pkce:${oauthState}`,
-      JSON.stringify({ verifier, redirect, state, callbackUrl })
-    );
+    // Encode all necessary state data (PKCE verifier, redirect URL, original state)
+    const stateData = encodeStateData({
+      verifier,
+      redirect,
+      state,
+      callbackUrl
+    });
 
     const params = {
       response_type: 'code',
@@ -72,7 +84,7 @@ module.exports = class extends Base {
         'offline.access',
         'email'
       ].join(' '),
-      state: oauthState,
+      state: stateData,
       code_challenge: challenge,
       code_challenge_method: 'S256'
     };
@@ -80,11 +92,11 @@ module.exports = class extends Base {
     return this.ctx.redirect(AUTH_URL + '?' + qs.stringify(params));
   }
 
-  async getAccessToken({ code, oauthState }) {
-    const sessionRaw = await this._session.get(`pkce:${oauthState}`);
-    if (!sessionRaw) return null;
+  async getAccessToken({ code, encodedState }) {
+    const stateData = decodeStateData(encodedState);
+    if (!stateData) return null;
 
-    const { verifier, callbackUrl } = JSON.parse(sessionRaw);
+    const { verifier, callbackUrl } = stateData;
 
     return await request({
       url: TOKEN_URL,
@@ -115,33 +127,33 @@ module.exports = class extends Base {
   }
 
   async getUserInfo() {
-    const { code, state: oauthState } = this.ctx.params;
+    const { code, state: encodedState } = this.ctx.params;
 
-    // 初次进入，没有 code/state，则发起 OAuth 2.0 授权
-    if (!code || !oauthState) {
+    // If no code/state, initiate OAuth 2.0 authorization
+    if (!code || !encodedState) {
       return this.redirect();
     }
 
     this.ctx.type = 'json';
 
-    const sessionRaw = await this._session.get(`pkce:${oauthState}`);
-    if (!sessionRaw) {
+    const stateData = decodeStateData(encodedState);
+    if (!stateData) {
       this.ctx.status = 400;
       return this.ctx.body = { error: 'Invalid OAuth state' };
     }
 
-    const { redirect, state } = JSON.parse(sessionRaw);
+    const { redirect, state } = stateData;
 
-    // 浏览器端先跳回 redirect，再由 Waline 服务端来拿用户信息
+    // Browser redirects back to your app first, then your backend calls this service
     if (redirect && this.ctx.headers['user-agent'] !== '@waline') {
       return this.ctx.redirect(
         redirect +
         (redirect.includes('?') ? '&' : '?') +
-        qs.stringify({ code, state: oauthState })
+        qs.stringify({ code, state: encodedState })
       );
     }
 
-    const tokenInfo = await this.getAccessToken({ code, oauthState });
+    const tokenInfo = await this.getAccessToken({ code, encodedState });
     if (!tokenInfo || !tokenInfo.access_token) {
       this.ctx.status = 401;
       return this.ctx.body = { error: 'Failed to obtain access token from Twitter OAuth 2.0' };

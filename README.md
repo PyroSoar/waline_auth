@@ -1,6 +1,6 @@
 # OAuth Center
 
-The easiest way to add user login to websites with [GitHub][GitHub], [Twitter][Twitter], [Facebook][Facebook], [Google][Google], [Weibo][Weibo], [QQ][QQ], and [OpenID Connect (OIDC)][OIDC].
+A unified OAuth authentication service that supports [GitHub][GitHub], [Twitter][Twitter], [Facebook][Facebook], [Google][Google], [Weibo][Weibo], [QQ][QQ], and [OpenID Connect (OIDC)][OIDC]. Perfect for [Waline](https://waline.js.org) comment systems, or integrate with any web application.
 
 ## ✨ Key Features
 
@@ -139,13 +139,14 @@ This guide includes:
 
 ### Twitter
 
-`TWITTER_ID` and `TWITTER_SECRET` environment variables are required.
+`TWITTER_ID` and `TWITTER_SECRET` environment variables are required (OAuth 2.0 PKCE).
 
 **Setup Guide:** [See Technical Guide](./TECHNICAL_GUIDE.md#twitter)
 
 - Redirect URL: `<a href="<serverUrl>/twitter?redirect=<callbackUrl>&state=<stateValue>">Login with Twitter</a>`
 - Get user info: `GET <serverUrl>/twitter?code=<code>&state=<state>`
 - **Response:** Unified format with `id`, `name`, `email`, `avatar`, `platform`
+- **Note:** Uses stateless PKCE with URL-encoded state, no backend storage required
 
 ### OIDC (OpenID Connect)
 
@@ -274,7 +275,7 @@ CMD ["npm", "start"]
 │       ├── validators.js   # Data validation utilities
 │       ├── index.js        # Utilities export
 │       └── storage/
-│           └── leancloud.js # LeanCloud storage
+│           └── (Deprecated: LeanCloud storage removed)
 └── vercel.json             # Vercel configuration
 ```
 
@@ -305,8 +306,8 @@ CMD ["npm", "start"]
 **Q: Do I need to set all platform environment variables?**
 A: No. Only set environment variables for platforms you want to use. The service automatically enables providers with valid credentials.
 
-**Q: Can I use this independently from Waline?**
-A: Yes! This is a standalone OAuth service. It can be used with any application.
+**Q: Is this only for Waline?**
+A: No. This is a universal OAuth service that works with Waline, but can also integrate with any web application. Waline is just one example use case.
 
 **Q: Does the response format change between platforms?**
 A: No. The response is always in the same unified format: `{ id, name, email, url, avatar, platform }`. This is a key improvement in v1.2.0.
@@ -322,6 +323,15 @@ A: `id` is the platform's unique identifier and should be used as your app's pri
 - **GitHub Issues:** https://github.com/walinejs/auth/issues
 - **Discussions:** https://github.com/walinejs/auth/discussions
 - **Documentation:** [TECHNICAL_GUIDE.md](./TECHNICAL_GUIDE.md)
+
+## Use Cases
+
+- **Waline Comment System** - Integrate with Waline for user authentication
+- **Static Sites** - Add user authentication to Jekyll, Hugo, or other static site generators
+- **SPA Applications** - Use with React, Vue, Angular, or other single-page applications
+- **Backend Services** - Integrate with Node.js, Python, or other server applications
+- **Mobile Apps** - Support OAuth login in mobile applications
+- **Custom Projects** - Any application that needs OAuth authentication
 
 ## License
 

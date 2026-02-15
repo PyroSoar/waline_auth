@@ -205,9 +205,6 @@ waline_auth/
         ├── index.js               # ✨ NEW - Utility exports
         ├── response.js            # ✨ NEW - Response formatter & validation
         ├── validators.js          # ✨ NEW - Validation utilities
-        │
-        └── storage/
-            └── leancloud.js       # Unchanged
 ```
 
 ---
