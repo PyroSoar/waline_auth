@@ -117,7 +117,7 @@ module.exports = class extends Base {
 
   async getUserInfoByToken(access_token) {
     const url = USER_INFO_URL +
-      '?user.fields=name,username,profile_image_url,url,email';
+      '?user.fields=name,username,profile_image_url,url,confirmed_email';
 
     return await request({
       url,
