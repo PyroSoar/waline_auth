@@ -82,7 +82,7 @@ module.exports = class extends Base {
         'tweet.read',
         'users.read',
         'offline.access',
-        'email'
+        'users.email'
       ].join(' '),
       state: stateData,
       code_challenge: challenge,
