@@ -98,6 +98,9 @@ module.exports = class extends Base {
     return await request({
       url: TOKEN_URL,
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
       form: {
         grant_type: 'authorization_code',
         client_id: TWITTER_CLIENT_ID,
@@ -108,6 +111,7 @@ module.exports = class extends Base {
       json: true
     });
   }
+
 
 
   async getUserInfoByToken(access_token) {
