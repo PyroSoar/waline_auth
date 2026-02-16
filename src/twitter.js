@@ -94,18 +94,19 @@ module.exports = class extends Base {
 
   async getAccessToken({ code, stateData }) {
     const { verifier, callbackUrl } = stateData;
+    const credentials = Buffer.from(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`).toString('base64');
 
     return await request({
       url: TOKEN_URL,
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${credentials}`
       },
       form: {
         grant_type: 'authorization_code',
-        client_id: TWITTER_CLIENT_ID,
-        redirect_uri: callbackUrl,
         code,
+        redirect_uri: callbackUrl,
         code_verifier: verifier
       },
       json: true
