@@ -132,24 +132,46 @@ module.exports = class extends Base {
   async getUserInfo() {
     const { code, state: encodedState } = this.ctx.params;
 
-    // If no code/state, initiate OAuth 2.0 authorization
+    // 检查客户端是否期待 JSON
+    const wantsJSON = (
+      (this.ctx.headers.accept || '').includes('application/json') ||
+      this.ctx.headers['user-agent'] === '@waline'
+    );
+
+    // 如果没有 code 或 state，则
     if (!code || !encodedState) {
+      if (wantsJSON) {
+        this.ctx.status = 400;
+        this.ctx.body = {
+          error: 'missing_code_or_state',
+          message: 'OAuth callback requires both code and state parameters.'
+        };
+        return;
+      }
+      // 浏览器访问 → 重定向去授权
       return this.redirect();
     }
 
     this.ctx.type = 'json';
 
-    // Decode the state to recover verifier and redirect info
+    // 尝试 decode state（用于 PKCE）
     const stateData = decodeStateData(encodedState);
     if (!stateData) {
       this.ctx.status = 400;
-      return this.ctx.body = { error: 'Invalid OAuth state' };
+      this.ctx.body = { 
+        error: 'invalid_state',
+        message: 'OAuth state is invalid or could not be decoded.'
+      };
+      return;
     }
 
     const { redirect } = stateData;
 
-    // If a redirect URL was provided, forward the code/state back to that client
-    if (redirect && this.ctx.headers['user-agent'] !== '@waline') {
+    // 区分 fetch 还是浏览器访问
+    const isBrowser = !wantsJSON;
+
+    // 如果是浏览器访问，并且 redirect 有值，则跳回客户端（带 code & state）
+    if (isBrowser && redirect) {
       return this.ctx.redirect(
         redirect +
         (redirect.includes('?') ? '&' : '?') +
@@ -157,18 +179,49 @@ module.exports = class extends Base {
       );
     }
 
-    // Exchange the code for an access token using the verifier from stateData
-    const tokenInfo = await this.getAccessToken({ code, stateData });
-    if (!tokenInfo || !tokenInfo.access_token) {
-      this.ctx.status = 401;
-      return this.ctx.body = { error: 'Failed to obtain access token from Twitter OAuth 2.0' };
+    // 到这里：我们要进行 Token 交换 + 获取用户信息
+    let tokenInfo;
+    try {
+      tokenInfo = await this.getAccessToken({ code, stateData });
+    } catch (err) {
+      this.ctx.status = 500;
+      this.ctx.body = {
+        error: 'token_exchange_failed',
+        message: err.message || 'Failed to obtain access token from Twitter.',
+        details: err.error || null
+      };
+      return;
     }
 
-    // Fetch user info with the access token
-    const userInfo = await this.getUserInfoByToken(tokenInfo.access_token);
+    if (!tokenInfo || !tokenInfo.access_token) {
+      this.ctx.status = 401;
+      this.ctx.body = {
+        error: 'no_access_token',
+        message: 'Twitter did not return an access token.',
+        raw: tokenInfo
+      };
+      return;
+    }
+
+    // 获取用户信息
+    let userInfo;
+    try {
+      userInfo = await this.getUserInfoByToken(tokenInfo.access_token);
+    } catch (err) {
+      this.ctx.status = 500;
+      this.ctx.body = {
+        error: 'user_info_fetch_failed',
+        message: err.message || 'Failed to fetch user info from Twitter.',
+        details: err.error || null
+      };
+      return;
+    }
+
     const u = userInfo && userInfo.data ? userInfo.data : {};
 
-    return this.ctx.body = this.formatUserResponse({
+    // 返回结构化的 JSON 用户信息
+    this.ctx.status = 200;
+    this.ctx.body = this.formatUserResponse({
       id: u.id,
       name: u.name || u.username,
       email: u.email || u.confirmed_email || `${u.id}@twitter-uuid.com`,
