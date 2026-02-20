@@ -226,7 +226,8 @@ module.exports = class extends Base {
       name: u.name || u.username,
       email: u.email || u.confirmed_email || `${u.id}@twitter-uuid.com`,
       url: u.url || (u.username ? `https://twitter.com/${u.username}` : undefined),
-      avatar: u.profile_image_url || undefined
+      avatar: u.profile_image_url || undefined,
+      originalResponse: u
     }, 'twitter');
   }
 

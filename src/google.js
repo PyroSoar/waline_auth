@@ -55,6 +55,7 @@ module.exports = class extends Base {
       email: user.email || undefined,
       url: undefined,
       avatar: user.picture,
+      originalResponse: user
     }, 'google');
   }
 

@@ -11,6 +11,7 @@ class UserResponse {
       email: '',
       url: '',
       avatar: '',
+      originalResponse: {},
       platform: '',
       ...data
     };
