@@ -6,12 +6,12 @@ const OAUTH_URL = 'https://oauth-login.cloud.huawei.com/oauth2/v3/authorize';
 const ACCESS_TOKEN_URL = 'https://oauth-login.cloud.huawei.com/oauth2/v3/token';
 const USER_INFO_URL = 'https://oauth-login.cloud.huawei.com/oauth2/v3/userinfo';
 
-const { HUAWEI_CLIENT_ID, HUAWEI_CLIENT_SECRET } = process.env;
+const { HUAWEI_ID, HUAWEI_SECRET } = process.env;
 
 module.exports = class extends Base {
 
   static check() {
-    return HUAWEI_CLIENT_ID && HUAWEI_CLIENT_SECRET;
+    return HUAWEI_ID && HUAWEI_SECRET;
   }
 
   static info() {
@@ -33,8 +33,8 @@ module.exports = class extends Base {
       url: ACCESS_TOKEN_URL,
       form: {
         grant_type: 'authorization_code',
-        client_id: HUAWEI_CLIENT_ID,
-        client_secret: HUAWEI_CLIENT_SECRET,
+        client_id: HUAWEI_ID,
+        client_secret: HUAWEI_SECRET,
         code,
         redirect_uri: redirectUrl
       },
@@ -82,7 +82,7 @@ module.exports = class extends Base {
       OAUTH_URL +
       '?' +
       qs.stringify({
-        client_id: HUAWEI_CLIENT_ID,
+        client_id: HUAWEI_ID,
         redirect_uri: redirectUrl,
         response_type: 'code',
         scope: 'openid profile email'
