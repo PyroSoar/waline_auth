@@ -11,7 +11,6 @@ class UserResponse {
       email: '',
       url: '',
       avatar: '',
-      originalResponse: {},
       platform: '',
       ...data
     };
@@ -50,6 +49,7 @@ class UserResponse {
    */
   normalize() {
     return {
+      ...this.data,
       id: String(this.data.id).trim(),
       name: String(this.data.name).trim(),
       email: String(this.data.email || '').trim() || undefined,
