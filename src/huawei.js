@@ -80,7 +80,7 @@ module.exports = class extends Base {
     return this.formatUserResponse({
       id: payload.sub,
       name: payload.nickname || payload.display_name || payload.sub,
-      email: payload.email,
+      email: payload.email || `${payload.sub}@huawei-uuid.com`,
       avatar: payload.picture,
       url: undefined,
       originalResponse: payload
