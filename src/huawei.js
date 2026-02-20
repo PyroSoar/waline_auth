@@ -79,7 +79,7 @@ module.exports = class extends Base {
 
     return this.formatUserResponse({
       id: payload.sub,
-      name: payload.name || payload.sub,
+      name: payload.nickname || payload.display_name || payload.sub,
       email: payload.email,
       avatar: payload.picture,
       url: undefined,
