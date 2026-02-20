@@ -82,7 +82,8 @@ module.exports = class extends Base {
       name: payload.name || payload.sub,
       email: payload.email,
       avatar: payload.picture,
-      url: undefined
+      url: undefined,
+      originalResponse: payload
     }, 'huawei');
   }
 

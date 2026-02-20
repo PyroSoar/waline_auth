@@ -64,6 +64,7 @@ module.exports = class extends Base {
       email: userInfo.email || undefined,
       url: (userInfo.blog && userInfo.blog.trim()) ? userInfo.blog : `https://github.com/${userInfo.login}`,
       avatar: userInfo.avatar_url,
+      originalResponse: userInfo
     }, 'github');
   }
 
